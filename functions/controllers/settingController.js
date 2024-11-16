@@ -5,7 +5,7 @@ const settingService = require("../services/settingService");
 const Setting = require("../models/Setting");
 
 // Settings 확인 프로세스
-const checkSetting = onCall(async (request) => {
+const checkSetting = onCall({ region: "asia-northeast3" }, async (request) => {
   try {
     // debugging log
     logger.info("handler phase start");
@@ -32,7 +32,7 @@ const checkSetting = onCall(async (request) => {
 });
 
 // Settings 업데이트 프로세스
-const updateSetting = onCall(async (request) => {
+const updateSetting = onCall({ region: "asia-northeast3" }, async (request) => {
   try {
     // debugging log
     logger.info("handler phase start");

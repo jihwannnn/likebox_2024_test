@@ -10,7 +10,7 @@ const PlatformFactory = require("../platforms/PlatformFactory");
 // createDefault, generateUrl,
 
 // 초기 유저 생성시 db에 default 생성
-const createDefault = onCall(async (request) => {
+const createDefault = onCall({ region: "asia-northeast3" }, async (request) => {
   try {
     // debugging log
     logger.info("handler phase start");
@@ -43,7 +43,7 @@ const createDefault = onCall(async (request) => {
 });
 
 // 인증을 위한 URL 생성 프로세스
-const generateUrl = onCall((request) => {
+const generateUrl = onCall({ region: "asia-northeast3" }, (request) => {
   try {
     const platform = request.data.platform;
     const platformInstance = PlatformFactory.getPlatform(platform);

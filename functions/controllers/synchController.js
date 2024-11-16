@@ -7,7 +7,7 @@ const playlistService = require("../services/playlistService");
 const infoService = require("../services/infoService");
 const PlatformFactory = require("../platforms/PlatformFactory");
 
-const synchLikedTracks = onCall(async (request) => {
+const synchLikedTracks = onCall({ region: "asia-northeast3" }, async (request) => {
   try {
     // debugging log
     logger.info("handler phase start for liked tracks");
@@ -50,7 +50,7 @@ const synchLikedTracks = onCall(async (request) => {
   }
 });
 
-const synchPlaylists = onCall(async (request) => {
+const synchPlaylists = onCall({ region: "asia-northeast3" }, async (request) => {
   try {
     // debugging log
     logger.info("handler phase start for playlists");

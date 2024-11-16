@@ -5,7 +5,7 @@ const infoService = require("../services/infoService");
 const Info = require("../models/Info");
 
 // Info 확인 프로세스
-const checkInfo = onCall(async (request) => {
+const checkInfo = onCall({ region: "asia-northeast3" }, async (request) => {
   try {
     // debugging log
     logger.info("handler phase start");
@@ -33,7 +33,7 @@ const checkInfo = onCall(async (request) => {
 });
 
 // Info 업데이트 프로세스
-const updateInfo = onCall(async (request) => {
+const updateInfo = onCall({ region: "asia-northeast3" }, async (request) => {
   try {
     // debugging log
     logger.info("handler phase start");

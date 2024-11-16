@@ -14,7 +14,7 @@ async function saveToken(token) {
       .collection("Tokens")
       .doc(token.uid)
       .collection("User_tokens")
-      .doc(token.platform); // 변경: platformId -> platform
+      .doc(token.platform);
 
     await tokenRef.set(
       {
@@ -42,11 +42,11 @@ async function getToken(uid, platform) {
       .collection("Tokens")
       .doc(uid)
       .collection("User_tokens")
-      .doc(platform); // 변경: platformId -> platform
+      .doc(platform);
     const tokenDoc = await tokenRef.get();
 
     if (!tokenDoc.exists) {
-      throw new Error("Token not found");
+      return null
     }
 
     const tokenData = tokenDoc.data();
@@ -60,4 +60,55 @@ async function getToken(uid, platform) {
     throw error;
   }
 }
-module.exports = { saveToken, getToken };
+
+// db에서 토큰 삭제하기
+async function deleteToken(uid, platform) {
+  // debugging log
+  logger.info("service phase start for token deletion");
+
+  try {
+    const tokenRef = db
+      .collection("Tokens")
+      .doc(uid)
+      .collection("User_tokens")
+      .doc(platform);
+
+    await tokenRef.delete();
+
+    // debugging log
+    logger.info("service phase finish for token deletion");
+  } catch (error) {
+    logger.error("Error: Service, deleting token:", error);
+    throw error;
+  }
+}
+
+// db에서 모든 토큰 삭제하기
+async function deleteAllTokens(uid) {
+  // debugging log
+  logger.info("service phase start for all tokens deletion");
+
+  try {
+    const tokensRef = db
+      .collection("Tokens")
+      .doc(uid)
+      .collection("User_tokens");
+
+    const tokens = await tokensRef.get();
+    
+    // 모든 토큰 문서 삭제
+    const batch = db.batch();
+    tokens.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+    await batch.commit();
+
+    // debugging log
+    logger.info("service phase finish for all tokens deletion");
+  } catch (error) {
+    logger.error("Error: Service, deleting all tokens:", error);
+    throw error;
+  }
+}
+
+module.exports = { saveToken, getToken, deleteToken, deleteAllTokens };
