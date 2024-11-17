@@ -1,13 +1,12 @@
 // Info model
 
 class Info {
-  constructor(uid, connectedPlatforms=[], playlists=[], likedTracks=[], albums=[]) {
+  constructor(uid, connectedPlatforms=[]) {
     if (!uid) {
       throw new Error("UID is required");
     }
     this._uid = uid; // private
     this.connectedPlatforms = connectedPlatforms;
-    this.playlists = playlists;
   }
   
     // "uid" getter

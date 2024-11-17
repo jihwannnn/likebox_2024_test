@@ -1,83 +1,115 @@
-const { logger } = require("firebase-functions/v2");
+// albumService.js
 const { getFirestore } = require("firebase-admin/firestore");
-const db = getFirestore();
-const Album = require("../models/Album");
+const { Album } = require("../models/Content");
+const { logServiceStart, logServiceFinish, logServiceError } = require("../utils/logger");
 
-// albums[] 저장
-async function saveAlbums(albums) {
+const db = getFirestore();
+const COLLECTION_NAME = "Albums";
+const SUB_COLLECTION_NAME = "User_albums";
+
+async function saveAlbums(uid, albums) {
   try {
-    logger.info("Service phase start");
+    logServiceStart("saveAlbums");
 
     const batch = db.batch();
+    const userAlbumsRef = db.collection(COLLECTION_NAME).doc(uid).collection(SUB_COLLECTION_NAME);
 
-    albums.forEach((album) => {
-      const albumRef = db
-        .collection("Albums")
-        .doc(album.isrc); // ISRC
+    const promises = albums.map(async (album) => {
+      const docRef = userAlbumsRef.doc(album.id);
+      const doc = await docRef.get();
 
-      // 앨범 데이터 저장
-      batch.set(
-        albumRef,
-        {
-          aid: album.aid,
-          platform: album.platform,
-          name: album.name,
-          artists: album.artists,
-          coverImageUrl: album.coverImageUrl,
-          tracks: album.tracks,
-          releasedAt: album.releasedAt,
-          trackCount: album.trackCount,
-        }
-      );
+      if (!doc.exists) {
+        batch.set(docRef, album.toJSON(), { merge: false });
+      }
     });
 
-    // 배치 커밋
+    await Promise.all(promises);
     await batch.commit();
 
-    logger.info("Service phase finish");
+    logServiceFinish("saveAlbums");
   } catch (error) {
-    logger.error("Error: Service, saving albums in batch:", error);
+    logServiceError("saveAlbums", error);
     throw error;
   }
 }
 
-// 모든 앨범 가져오기
-async function getAlbums(isrcs) {
+async function getAlbum(uid, upc) {
   try {
-    logger.info("Service phase start");
+    logServiceStart("getAlbum");
+
+    const albumDoc = await db
+      .collection(COLLECTION_NAME)
+      .doc(uid)
+      .collection(SUB_COLLECTION_NAME)
+      .doc(upc)
+      .get();
+
+    if (!albumDoc.exists) {
+      logServiceFinish("getAlbum");
+      return null;
+    }
+
+    const data = albumDoc.data();
+    const album = new Album(
+      upc,
+      data.pid,
+      data.platform,
+      data.name,
+      data.coverImageUrl,
+      data.artists,
+      data.tracks,
+      data.releasedDate,
+      data.trackCount
+    );
+
+    logServiceFinish("getAlbum");
+    return album;
+  } catch (error) {
+    logServiceError("getAlbum", error);
+    throw error;
+  }
+}
+
+async function getAlbums(uid, upcs) {
+  try {
+    logServiceStart("getAlbums");
 
     const albums = [];
-    const albumsRef = db.collection("Albums")
-    
-    const promises = isrcs.map(async (isrc) => {
-      const doc = await albumsRef.doc(isrc).get();
+    const userAlbumsRef = db.collection(COLLECTION_NAME).doc(uid).collection(SUB_COLLECTION_NAME);
+
+    const promises = upcs.map(async (upc) => {
+      const doc = await userAlbumsRef.doc(upc).get();
+
       if (doc.exists) {
         const data = doc.data();
         albums.push(
           new Album(
-            data.aid,
+            upc,
+            data.pid,
             data.platform,
-            doc.id, // ISRC (문서 ID)
             data.name,
-            data.artists,
             data.coverImageUrl,
+            data.artists,
             data.tracks,
-            data.releasedAt,
+            data.releasedDate,
             data.trackCount
           )
         );
       }
     });
 
-    // 모든 ISRC에 대한 검색이 완료될 때까지 기다림
     await Promise.all(promises);
 
-    logger.info("Service phase finish");
+    logServiceFinish("getAlbums");
     return albums;
   } catch (error) {
-    logger.error("Error: Service, retrieving all albums:", error);
+    logServiceError("getAlbums", error);
     throw error;
   }
 }
 
-module.exports = { saveAlbums, getAlbums };
+module.exports = {
+  saveAlbums,
+  getAlbum,
+  getAlbums
+};

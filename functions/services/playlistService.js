@@ -1,150 +1,130 @@
-const { logger } = require("firebase-functions/v2");
+// playlistService.js
 const { getFirestore } = require("firebase-admin/firestore");
+const { Playlist } = require("../models/Content");
+const { logServiceStart, logServiceFinish, logServiceError } = require("../utils/logger");
+
 const db = getFirestore();
-const Playlist = require("../models/Playlist");
+const COLLECTION_NAME = "Playlists";
+const SUB_COLLECTION_NAME = "User_playlists";
 
-// db에 Playlist 저장
-async function savePlaylist(playlist) {
+async function savePlaylist(uid, playlist) {
   try {
-    // debugging log
-    logger.info("service phase start");
+    logServiceStart("savePlaylist");
 
-    // db ref 가져오기 (ID만 사용)
-    const playlistRef = db.collection("Playlists").doc(playlist.id);
+    await db
+      .collection(COLLECTION_NAME)
+      .doc(uid)
+      .collection(SUB_COLLECTION_NAME)
+      .doc(playlist.id)
+      .set(playlist.toJSON(), { merge: false });
 
-    // 해당 ref에 저장
-    await playlistRef.set(
-      {
-        pid: playlist.pid,
-        platform: playlist.platform,
-        owner: playlist.owner,
-        name: playlist.name,
-        description: playlist.description,
-        coverImageUrl: playlist.coverImageUrl,
-        tracks: playlist.tracks,
-      },
-      { merge: false } // 덮어쓰기
-    );
-
-    // debugging log
-    logger.info("service phase finish");
+    logServiceFinish("savePlaylist");
   } catch (error) {
-    logger.error("Error: Service, saving playlist:", error);
+    logServiceError("savePlaylist", error);
     throw error;
   }
 }
 
-// playlists[] 저장 (존재 여부 확인 생략)
-async function savePlaylists(playlists) {
+async function savePlaylists(uid, playlists) {
   try {
-    // debugging log
-    logger.info("service phase start");
+    logServiceStart("savePlaylists");
 
     const batch = db.batch();
+    const userPlaylistsRef = db.collection(COLLECTION_NAME).doc(uid).collection(SUB_COLLECTION_NAME);
 
-    // 각 플레이리스트를 Firestore에 추가 (ID만 사용)
-    playlists.forEach((playlist) => {
-      const playlistRef = db.collection("Playlists").doc(playlist.id);
+    const promises = playlists.map(async (playlist) => {
+      const docRef = userPlaylistsRef.doc(playlist.id);
+      const doc = await docRef.get();
 
-      batch.set(
-        playlistRef,
-        {
-          pid: playlist.pid,
-          platform: playlist.platform,
-          owner: playlist.owner,
-          name: playlist.name,
-          description: playlist.description,
-          coverImageUrl: playlist.coverImageUrl,
-          tracks: playlist.tracks,
-        },
-        { merge: false } // 덮어쓰기
-      );
+      if (!doc.exists) {
+        batch.set(docRef, playlist.toJSON(), { merge: false });
+      }
     });
 
-    // 배치 커밋
+    await Promise.all(promises);
     await batch.commit();
 
-    // debugging log
-    logger.info("service phase finish");
+    logServiceFinish("savePlaylists");
   } catch (error) {
-    logger.error("Error: Service, saving playlists in batch:", error);
+    logServiceError("savePlaylists", error);
     throw error;
   }
 }
 
-// db에서 Playlist 가져오기
-async function getPlaylist(id) {
+async function getPlaylist(uid, id) {
   try {
-    // debugging log
-    logger.info("service phase start");
+    logServiceStart("getPlaylist");
 
-    const playlistRef = db.collection("Playlists").doc(id);
-    const playlistDoc = await playlistRef.get();
+    const playlistDoc = await db
+      .collection(COLLECTION_NAME)
+      .doc(uid)
+      .collection(SUB_COLLECTION_NAME)
+      .doc(id)
+      .get();
 
     if (!playlistDoc.exists) {
+      logServiceFinish("getPlaylist");
       return null;
     }
 
-    const playlistData = playlistDoc.data();
+    const data = playlistDoc.data();
     const playlist = new Playlist(
-      playlistData.pid,
-      playlistData.platform,
-      playlistData.owner,
-      id,
-      playlistData.name,
-      playlistData.description,
-      playlistData.coverImageUrl,
-      playlistData.tracks,
+      data.pid,
+      data.platform,
+      data.name,
+      data.description,
+      data.coverImageUrl,
+      data.tracks,
+      data.owner
     );
 
-    // debugging log
-    logger.info("service phase finish");
+    logServiceFinish("getPlaylist");
     return playlist;
   } catch (error) {
-    logger.error("Error: Service, retrieving playlist:", error);
+    logServiceError("getPlaylist", error);
     throw error;
   }
 }
 
-// 특정 ID 배열에 해당하는 모든 Playlist 가져오기
-async function getPlaylists(ids) {
+async function getPlaylists(uid, ids) {
   try {
-    // debugging log
-    logger.info("Service phase start");
+    logServiceStart("getPlaylists");
 
     const playlists = [];
-    const playlistsRef = db.collection("Playlists");
+    const userPlaylistsRef = db.collection(COLLECTION_NAME).doc(uid).collection(SUB_COLLECTION_NAME);
 
-    // ids를 기반으로 가져오기
     const promises = ids.map(async (id) => {
-      const doc = await playlistsRef.doc(id).get();
+      const doc = await userPlaylistsRef.doc(id).get();
+
       if (doc.exists) {
         const data = doc.data();
         playlists.push(
           new Playlist(
             data.pid,
             data.platform,
-            data.owner,
-            id,
             data.name,
             data.description,
             data.coverImageUrl,
             data.tracks,
+            data.owner
           )
         );
       }
     });
 
-    // 프로미스 기다리기
     await Promise.all(promises);
 
-    // debugging log
-    logger.info("Service phase finish");
+    logServiceFinish("getPlaylists");
     return playlists;
   } catch (error) {
-    logger.error("Error: Service, retrieving playlists:", error);
+    logServiceError("getPlaylists", error);
     throw error;
   }
 }
 
-module.exports = { savePlaylist, savePlaylists, getPlaylist, getPlaylists };
+module.exports = {
+  savePlaylist,
+  savePlaylists,
+  getPlaylist,
+  getPlaylists
+};

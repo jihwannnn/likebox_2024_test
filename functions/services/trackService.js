@@ -1,89 +1,76 @@
-const { logger } = require("firebase-functions/v2");
+// trackService.js
 const { getFirestore } = require("firebase-admin/firestore");
-const db = getFirestore();
-const Track = require("../models/Track");
+const { Track } = require("../models/Content");
+const { logServiceStart, logServiceFinish, logServiceError } = require("../utils/logger");
 
-// tracks[] 저장
-async function saveTracks(tracks) {
+const db = getFirestore();
+const COLLECTION_NAME = "Tracks";
+const SUB_COLLECTION_NAME = "User_tracks";
+
+async function saveTracks(uid, tracks) {
   try {
-    // debugging log
-    logger.info("service phase start");
+    logServiceStart("saveTracks");
 
     const batch = db.batch();
+    const userTracksRef = db.collection(COLLECTION_NAME).doc(uid).collection(SUB_COLLECTION_NAME);
 
     const promises = tracks.map(async (track) => {
-      const trackRef = db.collection("Tracks").doc(track.isrc);
+      const docRef = userTracksRef.doc(track.id);
+      const doc = await docRef.get();
 
-      // 문서가 이미 존재하는지 확인
-      const doc = await trackRef.get();
       if (!doc.exists) {
-        // 문서가 존재하지 않는 경우에만 배치에 추가
-        batch.set(
-          trackRef,
-          {
-            tid: track.tid,
-            name: track.name,
-            artist: track.artist,
-            albumName: track.albumName,
-            albumArtUrl: track.albumArtUrl,
-            durationMs: track.durationMs,
-          },
-          { merge: false } // 병합하지 않고 덮어쓰기
-        );
+        batch.set(docRef, track.toJSON(), { merge: false });
       }
     });
 
-    // 모든 promise 기다리기
     await Promise.all(promises);
-
-    // 배치 커밋
     await batch.commit();
 
-    // debugging log
-    logger.info("service phase finish");
+    logServiceFinish("saveTracks");
   } catch (error) {
-    logger.error("Error: Service, saving tracks in batch:", error);
+    logServiceError("saveTracks", error);
     throw error;
   }
 }
 
-// tracks[] 가져오기
-async function getTracks(isrcs) {
+async function getTracks(uid, isrcs) {
   try {
-    // debugging log
-    logger.info("service phase start");
+    logServiceStart("getTracks");
 
     const tracks = [];
-    const trackRefs = isrcs.map((isrc) => db.collection("Tracks").doc(isrc));
+    const userTracksRef = db.collection(COLLECTION_NAME).doc(uid).collection(SUB_COLLECTION_NAME);
 
-    // getAll로 한 번에 가져오기
-    const trackDocs = await db.getAll(...trackRefs);
+    const promises = isrcs.map(async (isrc) => {
+      const doc = await userTracksRef.doc(isrc).get();
 
-    // 성공적으로 가져온 트랙만 처리
-    trackDocs.forEach((doc) => {
       if (doc.exists) {
         const data = doc.data();
         tracks.push(
           new Track(
-            data.tid,
-            doc.id, // ISRC (문서 ID)
+            isrc,
+            data.pid,
+            data.platform,
             data.name,
+            data.albumArtUrl,
             data.artist,
             data.albumName,
-            data.albumArtUrl,
             data.durationMs
           )
         );
       }
     });
 
-    // debugging log
-    logger.info("service phase finish");
+    await Promise.all(promises);
+
+    logServiceFinish("getTracks");
     return tracks;
   } catch (error) {
-    logger.error("Error: Service, retrieving tracks in batch:", error);
+    logServiceError("getTracks", error);
     throw error;
   }
 }
 
-module.exports = { saveTracks, getTracks };
+module.exports = {
+  saveTracks,
+  getTracks
+};

@@ -1,18 +1,16 @@
-const { logger } = require("firebase-functions/v2");
+// settingService.js
 const { getFirestore } = require("firebase-admin/firestore");
-const db = getFirestore();
 const Setting = require("../models/Setting");
+const { logServiceStart, logServiceFinish, logServiceError } = require("../utils/logger");
 
-// db에 setting 생성
+const db = getFirestore();
+const COLLECTION_NAME = "Settings";
+
 async function saveSetting(setting) {
   try {
-    // debugging log
-    logger.info("service phase start");
+    logServiceStart("saveSetting");
 
-    // db ref 가져오기
-    const settingRef = db.collection("Settings").doc(setting.uid);
-
-    // 해당 ref에 저장
+    const settingRef = db.collection(COLLECTION_NAME).doc(setting.uid);
     await settingRef.set(
       {
         isDarkMode: setting.isDarkMode,
@@ -22,38 +20,41 @@ async function saveSetting(setting) {
       { merge: false }
     );
 
-    // debugging log
-    logger.info("service phase finish");
+    logServiceFinish("saveSetting");
   } catch (error) {
-    logger.error("Error: Service, save setting:", error);
+    logServiceError("saveSetting", error);
     throw error;
   }
 }
 
-// db에서 info 가져오기
 async function getSetting(uid) {
-
-  // debugging log
-  logger.info("service phase start");
-
   try {
-    const settingRef = db.collection("Settings").doc(uid);
-    const settingDoc = await settingRef.get();
+    logServiceStart("getSetting");
+
+    const settingDoc = await db.collection(COLLECTION_NAME).doc(uid).get();
 
     if (!settingDoc.exists) {
-      throw new Error("Info not found");
+      logServiceFinish("getSetting");
+      throw new Error("Setting not found");
     }
 
     const settingData = settingDoc.data();
-    const setting = new Setting(uid, settingData.isDarkMode, settingData.notificationEnabled, settingData.language);
+    const setting = new Setting(
+      uid, 
+      settingData.isDarkMode, 
+      settingData.notificationEnabled, 
+      settingData.language
+    );
 
-    // debugging log
-    logger.info("service phase finish");
+    logServiceFinish("getSetting");
     return setting;
   } catch (error) {
-    logger.error("Error: Service, retrieving tokens:", error);
+    logServiceError("getSetting", error);
     throw error;
   }
 }
 
-module.exports = { saveSetting, getSetting };
+module.exports = { 
+  saveSetting, 
+  getSetting 
+};

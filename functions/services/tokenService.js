@@ -1,19 +1,20 @@
-const { logger } = require("firebase-functions/v2");
+// tokenService.js
 const { getFirestore } = require("firebase-admin/firestore");
 const Token = require("../models/Token");
-const { refreshToken } = require("firebase-admin/app");
-const db = getFirestore();
+const { logServiceStart, logServiceFinish, logServiceError } = require("../utils/logger");
 
-// db에 토큰 저장
+const db = getFirestore();
+const COLLECTION_NAME = "Tokens";
+const SUB_COLLECTION_NAME = "User_tokens";
+
 async function saveToken(token) {
   try {
-    // debugging log
-    logger.info("service phase start");
+    logServiceStart("saveToken");
 
     const tokenRef = db
-      .collection("Tokens")
+      .collection(COLLECTION_NAME)
       .doc(token.uid)
-      .collection("User_tokens")
+      .collection(SUB_COLLECTION_NAME)
       .doc(token.platform);
 
     await tokenRef.set(
@@ -24,91 +25,86 @@ async function saveToken(token) {
       { merge: false }
     );
 
-    // debugging log
-    logger.info("service phase finish");
+    logServiceFinish("saveToken");
   } catch (error) {
-    logger.error("Error saving tokens:", error);
+    logServiceError("saveToken", error);
     throw error;
   }
 }
 
-// db에서 토큰 가져오기
 async function getToken(uid, platform) {
-  // debugging log
-  logger.info("service phase start");
-
   try {
-    const tokenRef = db
-      .collection("Tokens")
+    logServiceStart("getToken");
+
+    const tokenDoc = await db
+      .collection(COLLECTION_NAME)
       .doc(uid)
-      .collection("User_tokens")
-      .doc(platform);
-    const tokenDoc = await tokenRef.get();
+      .collection(SUB_COLLECTION_NAME)
+      .doc(platform)
+      .get();
 
     if (!tokenDoc.exists) {
-      return null
+      logServiceFinish("getToken");
+      return null;
     }
 
     const tokenData = tokenDoc.data();
     const token = new Token(uid, platform, tokenData.accessToken, tokenData.refreshToken);
 
-    // debugging log
-    logger.info("service phase finish");
+    logServiceFinish("getToken");
     return token;
   } catch (error) {
-    logger.error("Error: Service, retrieving tokens:", error);
+    logServiceError("getToken", error);
     throw error;
   }
 }
 
-// db에서 토큰 삭제하기
 async function deleteToken(uid, platform) {
-  // debugging log
-  logger.info("service phase start for token deletion");
-
   try {
+    logServiceStart("deleteToken");
+
     const tokenRef = db
-      .collection("Tokens")
+      .collection(COLLECTION_NAME)
       .doc(uid)
-      .collection("User_tokens")
+      .collection(SUB_COLLECTION_NAME)
       .doc(platform);
 
     await tokenRef.delete();
 
-    // debugging log
-    logger.info("service phase finish for token deletion");
+    logServiceFinish("deleteToken");
   } catch (error) {
-    logger.error("Error: Service, deleting token:", error);
+    logServiceError("deleteToken", error);
     throw error;
   }
 }
 
-// db에서 모든 토큰 삭제하기
 async function deleteAllTokens(uid) {
-  // debugging log
-  logger.info("service phase start for all tokens deletion");
-
   try {
+    logServiceStart("deleteAllTokens");
+
     const tokensRef = db
-      .collection("Tokens")
+      .collection(COLLECTION_NAME)
       .doc(uid)
-      .collection("User_tokens");
+      .collection(SUB_COLLECTION_NAME);
 
     const tokens = await tokensRef.get();
     
-    // 모든 토큰 문서 삭제
     const batch = db.batch();
     tokens.docs.forEach(doc => {
       batch.delete(doc.ref);
     });
     await batch.commit();
 
-    // debugging log
-    logger.info("service phase finish for all tokens deletion");
+    logServiceFinish("deleteAllTokens");
   } catch (error) {
-    logger.error("Error: Service, deleting all tokens:", error);
+    logServiceError("deleteAllTokens", error);
     throw error;
   }
 }
 
-module.exports = { saveToken, getToken, deleteToken, deleteAllTokens };
+module.exports = { 
+  saveToken, 
+  getToken, 
+  deleteToken, 
+  deleteAllTokens 
+};

@@ -1,14 +1,13 @@
 const { onCall } = require("firebase-functions/v2/https");
-const { logger, https } = require("firebase-functions/v2");
-
+const { https } = require("firebase-functions/v2");
 const settingService = require("../services/settingService");
 const Setting = require("../models/Setting");
+const { logControllerStart, logControllerFinish, logControllerError } = require("../utils/logger");
 
-// Settings 확인 프로세스
+// Settings 확인
 const checkSetting = onCall({ region: "asia-northeast3" }, async (request) => {
   try {
-    // debugging log
-    logger.info("handler phase start");
+    logControllerStart("checkSetting");
 
     // 인증된 요청인지 확인
     const auth = request.auth;
@@ -21,21 +20,19 @@ const checkSetting = onCall({ region: "asia-northeast3" }, async (request) => {
     // db에서 setting 가져오기
     const setting = await settingService.getSetting(uid);
 
-    // debugging log
-    logger.info("handler phase finish");
+    logControllerFinish("checkSetting");
 
     return { success: true, data: setting };
   } catch (error) {
-    logger.error("Error: Controller, checking setting,", error);
-    throw new https.HttpsError("internal", "설정을 확인하는 데 실패했습니다.");
+    logControllerError("checkSetting", error);
+    throw error;
   }
 });
 
-// Settings 업데이트 프로세스
+// Settings 업데이트
 const updateSetting = onCall({ region: "asia-northeast3" }, async (request) => {
   try {
-    // debugging log
-    logger.info("handler phase start");
+    logControllerStart("updateSetting");
 
     // 인증된 요청인지 확인
     const auth = request.auth;
@@ -52,14 +49,16 @@ const updateSetting = onCall({ region: "asia-northeast3" }, async (request) => {
     // db에 설정 정보 저장
     await settingService.saveSetting(setting);
 
-    // debugging log
-    logger.info("handler phase finish");
+    logControllerFinish("updateSetting");
 
     return { success: true, message: "설정이 성공적으로 업데이트되었습니다." };
   } catch (error) {
-    logger.error("Error: Controller, updating setting,", error);
-    throw new https.HttpsError("internal", "설정을 업데이트하는 데 실패했습니다.");
+    logControllerError("updateSetting", error);
+    throw error;
   }
 });
 
-module.exports = { checkSetting, updateSetting };
+module.exports = { 
+  checkSetting, 
+  updateSetting 
+};

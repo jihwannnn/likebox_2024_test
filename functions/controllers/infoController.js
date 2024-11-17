@@ -1,14 +1,13 @@
 const { onCall } = require("firebase-functions/v2/https");
-const { logger, https } = require("firebase-functions/v2");
-
+const { https } = require("firebase-functions/v2");
 const infoService = require("../services/infoService");
 const Info = require("../models/Info");
+const { logControllerStart, logControllerFinish, logControllerError } = require("../utils/logger");
 
-// Info 확인 프로세스
+// Info 확인
 const checkInfo = onCall({ region: "asia-northeast3" }, async (request) => {
   try {
-    // debugging log
-    logger.info("handler phase start");
+    logControllerStart("checkInfo");
 
     // 인증된 요청인지 확인
     const auth = request.auth;
@@ -22,21 +21,19 @@ const checkInfo = onCall({ region: "asia-northeast3" }, async (request) => {
     // db에서 info 가져오기
     const info = await infoService.getInfo(uid);
 
-    // debugging log
-    logger.info("handler phase finish");
+    logControllerFinish("checkInfo");
 
     return { success: true, data: info };
   } catch (error) {
-    logger.error("Error: Controller, checking info,", error);
-    throw new https.HttpsError("internal", "정보를 확인하는 데 실패했습니다.");
+    logControllerError("checkInfo", error);
+    throw error;
   }
 });
 
-// Info 업데이트 프로세스
+// Info 업데이트
 const updateInfo = onCall({ region: "asia-northeast3" }, async (request) => {
   try {
-    // debugging log
-    logger.info("handler phase start");
+    logControllerStart("updateInfo");
 
     // 인증된 요청인지 확인
     const auth = request.auth;
@@ -49,18 +46,17 @@ const updateInfo = onCall({ region: "asia-northeast3" }, async (request) => {
     const infoData = request.data.info;
 
     // Info 객체 생성
-    const info = new Info(uid, infoData.connectedPlatforms, infoData.playlist);
+    const info = new Info(uid, infoData.connectedPlatforms);
 
     // db에 정보 저장
     await infoService.saveInfo(uid, info);
 
-    // debugging log
-    logger.info("handler phase finish");
+    logControllerFinish("updateInfo");
 
     return { success: true, message: "정보 업데이트 완료." };
   } catch (error) {
-    logger.error("Error: Controller, updating info,", error);
-    throw new https.HttpsError("internal", "정보를 업데이트하는 데 실패했습니다.");
+    logControllerError("updateInfo", error);
+    throw error;
   }
 });
 

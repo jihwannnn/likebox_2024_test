@@ -1,58 +1,53 @@
-const { logger } = require("firebase-functions/v2");
+// infoService.js
 const { getFirestore } = require("firebase-admin/firestore");
-const db = getFirestore();
-const Info = require("../models/Info")
+const Info = require("../models/Info");
+const { logServiceStart, logServiceFinish, logServiceError } = require("../utils/logger");
 
-// db에 info 저장
+const db = getFirestore();
+const COLLECTION_NAME = "Infos";
+
 async function saveInfo(info) {
   try {
-    // debugging log
-    logger.info("service phase start");
+    logServiceStart("saveInfo");
 
-    // db ref 가져오기
-    const settingRef = db.collection("Infos").doc(info.uid);
-
-    // 해당 ref에 저장
+    const settingRef = db.collection(COLLECTION_NAME).doc(info.uid);
     await settingRef.set(
       {
         connectedPlatforms: info.connectedPlatforms,
-        playlists: info.playlists
       },
       { merge: false }
     );
 
-    // debugging log
-    logger.info("service phase finish");
+    logServiceFinish("saveInfo");
   } catch (error) {
-    logger.error("Error: Service, save info:", error);
+    logServiceError("saveInfo", error);
     throw error;
   }
 }
 
-// db에서 info 가져오기
 async function getInfo(uid) {
-
-  // debugging log
-  logger.info("service phase start");
-
   try {
-    const infoRef = db.collection("Infos").doc(uid);
-    const infoDoc = await infoRef.get();
+    logServiceStart("getInfo");
+
+    const infoDoc = await db.collection(COLLECTION_NAME).doc(uid).get();
 
     if (!infoDoc.exists) {
+      logServiceFinish("getInfo");
       throw new Error("Info not found");
     }
 
     const infoData = infoDoc.data();
-    const info = new Info(uid, infoData.connectedPlatforms, infoData.playlists);
+    const info = new Info(uid, infoData.connectedPlatforms);
 
-    // debugging log
-    logger.info("service phase finish");
+    logServiceFinish("getInfo");
     return info;
   } catch (error) {
-    logger.error("Error: Service, retrieving tokens:", error);
+    logServiceError("getInfo", error);
     throw error;
   }
 }
 
-module.exports = { saveInfo, getInfo };
+module.exports = { 
+  saveInfo, 
+  getInfo 
+};

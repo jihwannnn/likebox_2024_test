@@ -1,96 +1,124 @@
+// synchController.js
 const { onCall } = require("firebase-functions/v2/https");
-const { logger, https } = require("firebase-functions/v2");
-
+const { https } = require("firebase-functions/v2");
 const tokenService = require("../services/tokenService");
 const trackService = require("../services/trackService");
 const playlistService = require("../services/playlistService");
-const infoService = require("../services/infoService");
+const albumService = require("../services/albumService");
+const userContentDataService = require("../services/userContentDataService");
 const PlatformFactory = require("../platforms/PlatformFactory");
+const { logControllerStart, logControllerFinish, logControllerError } = require("../utils/logger");
 
-const synchLikedTracks = onCall({ region: "asia-northeast3" }, async (request) => {
+const synchContent = onCall({ region: "asia-northeast3" }, async (request) => {
   try {
-    // debugging log
-    logger.info("handler phase start for liked tracks");
+    const { contentType, platform } = request.data;
+    logControllerStart(`synchContent_${contentType}`);
 
-    // 인증된 요청인지 확인
+    // 인증 확인
     const auth = request.auth;
     if (!auth) {
       throw new https.HttpsError("unauthenticated", "사용자가 인증되지 않았습니다.");
     }
 
-    // uid & platform
+    // 데이터 초기화
     const uid = auth.uid;
-    const platform = request.data.platform;
-
-    const info = infoService.getInfo(uid);
-
-    // platform 객체 생성
-    const platformInstance = PlatformFactory.getPlatform(platform);
-
-    // 토큰 가져오기
-    const tokens = await tokenService.getToken(uid, platform);
-    const accessToken = tokens.accessToken;
-
-    // 좋아요한 트랙 가져오기
-    const { likedPlaylist, likedTracks } = await platformInstance.getLikedTracks(accessToken);
-    await playlistService.savePlaylist(likedPlaylist);
-    await trackService.saveTracks(likedTracks);
-
-    // debugging log
-    logger.info("handler phase finish for liked tracks");
-
-    return { success: true, message: "Successfully saved liked tracks" };
-  } catch (error) {
-    if (error.response && error.response.status === 401) {
-      logger.error("Error: Access token is expired or invalid.");
-      return { success: false, message: "Access token is expired or invalid." };
-    } else {
-      throw error;
+    let contentData = await userContentDataService.getContentData(uid);
+    if (!contentData) {
+      contentData = new UserContentData(uid);
     }
+
+    // 플랫폼에서 데이터 가져옴
+    const platformInstance = PlatformFactory.getPlatform(platform);
+    const tokens = await tokenService.getToken(uid, platform);
+
+    switch (contentType) {
+      case "TRACK": {
+        // 좋아요한 트랙 목록 가져오기
+        const { trackIds, allTracks } = await platformInstance.getLikedTracks(tokens.accessToken);
+        const savedContent = contentData.getLikedTracksByPlatform(platform);
+        
+        // 삭제된 트랙 처리
+        savedContent.forEach(savedId => {
+          if (!trackIds.includes(savedId)) {
+            contentData.unsaveLikedTrack(savedId, platform);
+          }
+        });
+
+        // 새로 추가된 트랙 처리
+        trackIds.forEach(id => {
+          contentData.saveLikedTrack(id, platform);
+        });
+
+        // db에 저장
+        await trackService.saveTracks(uid, allTracks);
+        break;
+      }
+      
+      case "PLAYLIST": {
+        // 플레이리스트 목록 가져오기
+        const { allPlaylists, allTracks } = await platformInstance.getPlaylists(tokens.accessToken);
+        const savedContent = contentData.getPlaylistsByPlatform(platform);
+        const playlistIds = allPlaylists.map(playlist => playlist.id);
+        
+        // 삭제된 플레이리스트 처리
+        savedContent.forEach(savedId => {
+          if (!playlistIds.includes(savedId)) {
+            contentData.unsavePlaylist(savedId, platform);
+          }
+        });
+
+        // 새로 추가된 플레이리스트 처리
+        playlistIds.forEach(id => {
+          contentData.savePlaylist(id, platform);
+        });
+
+        // db에 저장
+        await playlistService.savePlaylists(uid, allPlaylists);
+        await trackService.saveTracks(uid, allTracks);
+        break;
+      }
+      
+      case "ALBUM": {
+        // 앨범 목록 가져오기
+        const { allAlbums, allTracks } = await platformInstance.getAlbums(tokens.accessToken);
+        const savedContent = contentData.getAlbumsByPlatform(platform);
+        const albumIds = allAlbums.map(album => album.id);
+        
+        // 삭제된 앨범 처리
+        savedContent.forEach(savedId => {
+          if (!albumIds.includes(savedId)) {
+            contentData.unsaveAlbum(savedId, platform);
+          }
+        });
+
+        // 새로 추가된 앨범 처리
+        albumIds.forEach(id => {
+          contentData.saveAlbum(id, platform);
+        });
+
+        // db에 저장
+        await albumService.saveAlbums(uid, allAlbums);
+        await trackService.saveTracks(uid, allTracks);
+        break;
+      }
+      
+      default:
+        throw new Error(`Unknown content type: ${contentType}`);
+    }
+
+    await userContentDataService.saveContentData(contentData);
+    
+    logControllerFinish(`synchContent_${contentType}`);
+    return { success: true, message: `Successfully saved ${contentType}` };
+  } catch (error) {
+    if (error.response?.status === 401) {
+      logControllerError("synchContent", error);
+      return { success: false, message: "Access token is expired or invalid." };
+    }
+    throw error;
   }
 });
 
-const synchPlaylists = onCall({ region: "asia-northeast3" }, async (request) => {
-  try {
-    // debugging log
-    logger.info("handler phase start for playlists");
-
-    // 인증된 요청인지 확인
-    const auth = request.auth;
-    if (!auth) {
-      throw new https.HttpsError("unauthenticated", "사용자가 인증되지 않았습니다.");
-    }
-
-    // uid & platform
-    const uid = auth.uid;
-    const platform = request.data.platform;
-
-    const info = infoService.getInfo(uid);
-
-    // platform 객체 생성
-    const platformInstance = PlatformFactory.getPlatform(platform);
-
-    // 토큰 가져오기
-    const tokens = await tokenService.getToken(uid, platform);
-    const accessToken = tokens.accessToken;
-
-    // 플레이리스트들 가져오기
-    const { playlists, tracks } = await platformInstance.getPlaylist(accessToken);
-    await playlistService.savePlaylists(playlists);
-    await trackService.saveTracks(tracks);
-
-    // debugging log
-    logger.info("handler phase finish for playlists");
-
-    return { success: true, message: "Successfully saved playlists and tracks" };
-  } catch (error) {
-    if (error.response && error.response.status === 401) {
-      logger.error("Error: Access token is expired or invalid.");
-      return { success: false, message: "Access token is expired or invalid." };
-    } else {
-      throw error;
-    }
-  }
-});
-
-module.exports = { synchLikedTracks, synchPlaylists };
+module.exports = {
+  synchContent
+};
