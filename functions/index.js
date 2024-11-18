@@ -3,6 +3,7 @@ const admin = require("firebase-admin");
 admin.initializeApp(); // Firebase Admin 초기화
 
 const albumController = require("./controllers/albumController");
+const contentController = require("./controllers/contentController");
 const generalController = require("./controllers/generalController");
 const infoController = require("./controllers/infoController");
 const playlistController = require("./controllers/playlistController");
@@ -28,21 +29,26 @@ exports.updateSetting = settingController.updateSetting;
 // Sync
 exports.synchContent = synchController.synchContent;
 
-
 // Token
 exports.generateToken = tokenController.generateToken;
 exports.verifyToken = tokenController.verifyToken;
 exports.removeToken = tokenController.removeToken; 
 exports.removeAllTokens = tokenController.removeAllTokens
 
+// Content
+exports.getLikedContent = contentController.getLikedContent
+
 // Playlist
-exports.getPlaylists = playlistController.getPlaylists;
 exports.getPlaylist = playlistController.getPlaylist;
+exports.getPlaylists = playlistController.getPlaylists;
+exports.getPlatformsPlaylists = playlistController.getPlatformsPlaylists;
 
 // Track
 exports.getTracks = trackController.getTracks;
+exports.getPlatformsTracks = trackController.getPlatformsTracks
 
 
 // Album
-exports.getAlbums = albumController.getAlbums;
 exports.getAlbum = albumController.getAlbum;
+exports.getAlbums = albumController.getAlbums;
+exports.getPlatformsAlbums = albumController.getPlatformsAlbums;

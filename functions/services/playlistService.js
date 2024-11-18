@@ -1,4 +1,3 @@
-// playlistService.js
 const { getFirestore } = require("firebase-admin/firestore");
 const { Playlist } = require("../models/Content");
 const { logServiceStart, logServiceFinish, logServiceError } = require("../utils/logger");
@@ -75,7 +74,8 @@ async function getPlaylist(uid, id) {
       data.description,
       data.coverImageUrl,
       data.tracks,
-      data.owner
+      data.owner,
+      data.trackCount
     );
 
     logServiceFinish("getPlaylist");
@@ -106,7 +106,8 @@ async function getPlaylists(uid, ids) {
             data.description,
             data.coverImageUrl,
             data.tracks,
-            data.owner
+            data.owner,
+            data.trackCount
           )
         );
       }

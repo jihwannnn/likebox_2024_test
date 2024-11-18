@@ -10,7 +10,7 @@ class Content {
     if (!platform) {
       throw new Error("Platform is required");
     }
-
+    
     this._id = id;
     this._pid = pid;
     this._platform = platform;
@@ -37,15 +37,16 @@ class Content {
   }
 }
 
-// Playlist
+// Playlist class
 class Playlist extends Content {
-  constructor(pid, platform, name = "", description = "", coverImageUrl = "", tracks = [], owner = "") {
+  constructor(pid, platform, name = "", description = "", coverImageUrl = "", tracks = [], owner = "", trackCount = 0) {
     super(pid+platform, pid, platform);
     this.name = name;
     this.description = description;
     this.coverImageUrl = coverImageUrl;
     this.tracks = tracks;
     this.owner = owner;
+    this.trackCount = trackCount;
   }
 
   toJSON() {
@@ -55,12 +56,13 @@ class Playlist extends Content {
       description: this.description,
       coverImageUrl: this.coverImageUrl,
       tracks: this.tracks.map(track => track.toJSON()),
-      owner: this.owner
+      owner: this.owner,
+      trackCount: this.trackCount
     };
   }
 }
 
-// Track
+// Track class
 class Track extends Content {
   constructor(isrc, pid, platform, name = "", albumArtUrl = "", artist = [], albumName = "", durationMs = 0) {
     super(isrc, pid, platform);
@@ -83,9 +85,9 @@ class Track extends Content {
   }
 }
 
-// Album
+// Album class
 class Album extends Content {
-  constructor(upc, pid, platform, name = "", coverImageUrl = "", artists = [], tracks = [], releasedDate = "", trackCount = 0) {
+  constructor(upc, pid, platform, name = "", coverImageUrl = "", artists = [], tracks = [], releasedDate = 0, trackCount = 0) {
     super(upc, pid, platform);
     this.name = name;
     this.coverImageUrl = coverImageUrl;

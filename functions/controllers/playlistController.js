@@ -2,6 +2,7 @@
 const { onCall } = require("firebase-functions/v2/https");
 const { https } = require("firebase-functions/v2");
 const playlistService = require("../services/playlistService");
+const userContentDataService = require("../services/userContentDataService");
 const { logControllerStart, logControllerFinish, logControllerError } = require("../utils/logger");
 
 // 단일 플레이리스트 조회
@@ -67,7 +68,39 @@ const getPlaylists = onCall({ region: "asia-northeast3" }, async (request) => {
   }
 });
 
+const getPlatformsPlaylists = onCall({ region: "asia-northeast3" }, async (request) => {
+  try{
+    logControllerStart("getPlatformsPlaylists");
+
+    // 인증된 요청인지 확인
+    const auth = request.auth;
+    if (!auth) {
+      throw new https.HttpsError("unauthenticated", "사용자가 인증되지 않았습니다.");
+    }
+
+    const uid = auth.uid;
+    const platforms = request.data;
+
+    const contentData = userContentDataService.getContentData(uid);
+    const playlistIds = new Set();
+
+    platforms.forEach(platform => {
+      let platformsPlaylists = contentData.getPlatformsPlaylists(platform);
+      platformsPlaylists.forEach(playlistId => playlistIds.add(playlistId));
+    });
+
+    const playlists = playlistService.getPlaylists(uid, Array.from(playlistIds));
+
+    logControllerFinish("getPlatformsPlaylists");
+    return { success: true, data: playlists };
+  } catch {
+    logControllerError("getPlatformsPlaylists", error);
+    throw error;
+  }
+});
+
 module.exports = {
   getPlaylist,
-  getPlaylists
+  getPlaylists,
+  getPlatformsPlaylists
 };

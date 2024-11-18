@@ -23,9 +23,6 @@ const synchContent = onCall({ region: "asia-northeast3" }, async (request) => {
     // 데이터 초기화
     const uid = auth.uid;
     let contentData = await userContentDataService.getContentData(uid);
-    if (!contentData) {
-      contentData = new UserContentData(uid);
-    }
 
     // 플랫폼에서 데이터 가져옴
     const platformInstance = PlatformFactory.getPlatform(platform);

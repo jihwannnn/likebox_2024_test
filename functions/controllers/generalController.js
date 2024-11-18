@@ -2,8 +2,10 @@ const { onCall } = require("firebase-functions/v2/https");
 const { https } = require("firebase-functions/v2");
 const infoService = require("../services/infoService");
 const settingService = require("../services/settingService");
+const userContentDataService = require("../services/userContentDataService");
 const Info = require("../models/Info");
 const Setting = require("../models/Setting");
+const UserContentData = require("../models/UserContentData");
 const PlatformFactory = require("../platforms/PlatformFactory");
 const { logControllerStart, logControllerFinish, logControllerError } = require("../utils/logger");
 
@@ -23,10 +25,12 @@ const createDefault = onCall({ region: "asia-northeast3" }, async (request) => {
 
     const info = new Info(uid);
     const setting = new Setting(uid);
+    const contentData = new UserContentData(uid);
 
     // db에 기본 정보 저장
     await infoService.saveInfo(info);
     await settingService.saveSetting(setting);
+    await userContentDataService.saveContentData(contentData);
 
     logControllerFinish("createDefault");
 

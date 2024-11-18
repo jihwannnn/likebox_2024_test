@@ -1,5 +1,6 @@
 const axios = require("axios");
 const querystring = require("querystring");
+
 const { logPlatformStart, logPlatformFinish, logPlatformError } = require("../utils/logger");
 const Platform = require("./PlatformInterface");
 const Token = require("../models/Token");
@@ -9,6 +10,7 @@ const {
   SPOTIFY_CLIENT_SECRET, 
   FOR_SERVER_REDIRECT_URI 
 } = require("../params");
+const { convertDateToInt } = require("../utils/converDateToInt");
 
 class Spotify extends Platform {
   getAuthUrl() {
@@ -193,7 +195,8 @@ class Spotify extends Platform {
             playlistData.description || "", // description
             playlistData.images.length > 0 ? playlistData.images[0].url : "", // coverImageUrl
             trackIsrcs,               // tracks (isrc array)
-            playlistData.owner.id     // owner
+            playlistData.owner.id,    // owner
+            playlistData.tracks.total // trackCount
           );
 
           allPlaylists.push(playlist);
@@ -293,7 +296,7 @@ class Spotify extends Platform {
               albumData.images.length > 0 ? albumData.images[0].url : "", // coverImageUrl
               albumData.artists.map(artist => artist.name), // artists
               trackIsrcs,                  // tracks (isrc array)
-              albumData.release_date,      // releasedDate
+              convertDateToInt(albumData.release_date),      // releasedDate
               albumData.tracks.total       // trackCount
             );
 

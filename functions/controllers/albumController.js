@@ -2,6 +2,7 @@
 const { onCall } = require("firebase-functions/v2/https");
 const { https } = require("firebase-functions/v2");
 const albumService = require("../services/albumService");
+const userContentDataService = require("../services/userContentDataService");
 const { logControllerStart, logControllerFinish, logControllerError } = require("../utils/logger");
 
 // 단일 앨범 조회
@@ -67,7 +68,39 @@ const getAlbums = onCall({ region: "asia-northeast3" }, async (request) => {
   }
 });
 
+const getPlatformsAlbums = onCall({ region: "asia-northeast3" }, async (request) => {
+  try{
+    logControllerStart("getPlatformsAlbums");
+
+    // 인증된 요청인지 확인
+    const auth = request.auth;
+    if (!auth) {
+      throw new https.HttpsError("unauthenticated", "사용자가 인증되지 않았습니다.");
+    }
+
+    const uid = auth.uid;
+    const platforms = request.data;
+
+    const contentData = userContentDataService.getContentData(uid);
+    const albumIds = new Set();
+
+    platforms.forEach(platform => {
+      let platformsAlbums = contentData.getPlatformsAlbums(platform);
+      platformsAlbums.forEach(albumId => albumIds.add(albumId));
+    });
+
+    const albums = albumService.getAlbums(uid, Array.from(albumIds));
+
+    logControllerFinish("getPlatformsAlbums");
+    return { success: true, data: albums };
+  } catch {
+    logControllerError("getPlatformsAlbums", error);
+    throw error;
+  }
+});
+
 module.exports = {
   getAlbum,
-  getAlbums
+  getAlbums,
+  getPlatformsAlbums
 };
