@@ -3,6 +3,8 @@ const { onCall } = require("firebase-functions/v2/https");
 const { https } = require("firebase-functions/v2");
 const playlistService = require("../services/playlistService");
 const userContentDataService = require("../services/userContentDataService");
+
+const { addTracksToPlaylist } = require("../utils/addTracks");
 const { logControllerStart, logControllerFinish, logControllerError } = require("../utils/logger");
 
 // 단일 플레이리스트 조회
@@ -16,7 +18,7 @@ const getPlaylist = onCall({ region: "asia-northeast3" }, async (request) => {
       throw new https.HttpsError("unauthenticated", "사용자가 인증되지 않았습니다.");
     }
 
-    const uid = auth.uid;
+    const uid = auth.uid; 
     const { playlistId } = request.data;
 
     if (!playlistId) {
@@ -29,9 +31,12 @@ const getPlaylist = onCall({ region: "asia-northeast3" }, async (request) => {
       throw new https.HttpsError("not-found", "플레이리스트를 찾을 수 없습니다.");
     }
 
+    // to be fix
+    const playlistData = await addTracksToPlaylist(playlist)
+
     logControllerFinish("getPlaylist");
 
-    return { success: true, data: playlist };
+    return { success: true, data: playlistData };
   } catch (error) {
     logControllerError("getPlaylist", error);
     throw error;
@@ -59,9 +64,12 @@ const getPlaylists = onCall({ region: "asia-northeast3" }, async (request) => {
     // 플레이리스트 목록 조회
     const playlists = await playlistService.getPlaylists(uid, playlistIds);
 
+    // to be fix
+    const playlistsData = playlists.map(async (playlist) => addTracksToPlaylist(playlist));
+
     logControllerFinish("getPlaylists");
 
-    return { success: true, data: playlists };
+    return { success: true, data: playlistsData };
   } catch (error) {
     logControllerError("getPlaylists", error);
     throw error;
@@ -81,7 +89,7 @@ const getPlatformsPlaylists = onCall({ region: "asia-northeast3" }, async (reque
     const uid = auth.uid;
     const platforms = request.data;
 
-    const contentData = userContentDataService.getContentData(uid);
+    const contentData = await userContentDataService.getContentData(uid);
     const playlistIds = new Set();
 
     platforms.forEach(platform => {
@@ -89,15 +97,19 @@ const getPlatformsPlaylists = onCall({ region: "asia-northeast3" }, async (reque
       platformsPlaylists.forEach(playlistId => playlistIds.add(playlistId));
     });
 
-    const playlists = playlistService.getPlaylists(uid, Array.from(playlistIds));
+    const playlists = await playlistService.getPlaylists(uid, Array.from(playlistIds));
+
+    // to be fix
+    const playlistsData = playlists.map(async (playlist) => addTracksToPlaylist(playlist));
 
     logControllerFinish("getPlatformsPlaylists");
-    return { success: true, data: playlists };
+    return { success: true, data: playlistsData };
   } catch {
     logControllerError("getPlatformsPlaylists", error);
     throw error;
   }
 });
+
 
 module.exports = {
   getPlaylist,

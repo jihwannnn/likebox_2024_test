@@ -7,6 +7,8 @@ const albumService = require("../services/albumService");
 const playlistService = require("../services/playlistService");
 const { logControllerStart, logControllerFinish, logControllerError } = require("../utils/logger");
 
+const { addTracksToAlbum, addTracksToPlaylist } = require("../utils/addTracks");
+
 
 const getLikedContent = onCall({ region: "asia-northeast3" }, async (request) => {
   try {
@@ -40,10 +42,12 @@ const getLikedContent = onCall({ region: "asia-northeast3" }, async (request) =>
         content = trackService.getTracks(contentData.getLikedTracksByPlatform(platform));
         break;
       case "PLAYLIST":
-        content = playlistService.getPlaylists(contentData.getPlaylistsByPlatform(platform));
+        content = playlistService.getPlaylists(contentData.getPlaylistsByPlatform(platform))
+        .map(async (playlist) => addTracksToPlaylist(playlist)); // to be fix
         break;
       case "ALBUM":
-        content = albumService.getAlbums(contentData.getAlbumsByPlatform(platform));
+        content = albumService.getAlbums(contentData.getAlbumsByPlatform(platform))
+        .map(async (album) => addTracksToAlbum(album)); // to be fix
         break;
 
       default:

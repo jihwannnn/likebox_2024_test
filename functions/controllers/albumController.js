@@ -5,6 +5,8 @@ const albumService = require("../services/albumService");
 const userContentDataService = require("../services/userContentDataService");
 const { logControllerStart, logControllerFinish, logControllerError } = require("../utils/logger");
 
+const { addTracksToAlbum } = require("../utils/addTracks");
+
 // 단일 앨범 조회
 const getAlbum = onCall({ region: "asia-northeast3" }, async (request) => {
   try {
@@ -29,9 +31,12 @@ const getAlbum = onCall({ region: "asia-northeast3" }, async (request) => {
       throw new https.HttpsError("not-found", "앨범을 찾을 수 없습니다.");
     }
 
+    // to be fix
+    const albumData = await addTracksToAlbum(album)
+
     logControllerFinish("getAlbum");
 
-    return { success: true, data: album };
+    return { success: true, data: albumData };
   } catch (error) {
     logControllerError("getAlbum", error);
     throw error;
@@ -59,9 +64,12 @@ const getAlbums = onCall({ region: "asia-northeast3" }, async (request) => {
     // 앨범 목록 조회
     const albums = await albumService.getAlbums(uid, albumIds);
 
+    // to be fix
+    const albumsData = albums.map(async (album) => addTracksToAlbum(album));
+
     logControllerFinish("getAlbums");
 
-    return { success: true, data: albums };
+    return { success: true, data: albumsData };
   } catch (error) {
     logControllerError("getAlbums", error);
     throw error;
@@ -91,8 +99,11 @@ const getPlatformsAlbums = onCall({ region: "asia-northeast3" }, async (request)
 
     const albums = albumService.getAlbums(uid, Array.from(albumIds));
 
+    // to be fix
+    const albumsData = albums.map(async (album) => addTracksToAlbum(album));
+
     logControllerFinish("getPlatformsAlbums");
-    return { success: true, data: albums };
+    return { success: true, data: albumsData };
   } catch {
     logControllerError("getPlatformsAlbums", error);
     throw error;
