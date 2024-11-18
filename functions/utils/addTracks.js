@@ -1,6 +1,6 @@
 const trackService = require("../services/trackService");
 
-// repo 보조 함수
+// 클라이언트 repo 보조 함수
 async function addTracksToPlaylist(playlist){
 
   let tracks = trackService.getTracks(uid, playlist.tracks);
@@ -12,7 +12,7 @@ async function addTracksToPlaylist(playlist){
 
 }
 
-// repo 보조 함수
+// 클라이언트 repo 보조 함수
 async function addTracksToAlbum(album){
 
   let tracks = trackService.getTracks(uid, album.tracks);

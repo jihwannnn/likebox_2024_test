@@ -12,6 +12,8 @@ const synchController = require("./controllers/synchController");
 const tokenController = require("./controllers/tokenController");
 const trackController = require("./controllers/trackController");
 
+const testController = require("./controllers/testController");
+
 
 
 // General
@@ -52,3 +54,7 @@ exports.getPlatformsTracks = trackController.getPlatformsTracks
 exports.getAlbum = albumController.getAlbum;
 exports.getAlbums = albumController.getAlbums;
 exports.getPlatformsAlbums = albumController.getPlatformsAlbums;
+
+
+// Test
+exports.testFunction1 = testController.testFunction1;
