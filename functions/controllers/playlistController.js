@@ -5,7 +5,7 @@ const playlistService = require("../services/playlistService");
 const userContentDataService = require("../services/userContentDataService");
 
 const { addTracksToPlaylist } = require("../utils/addTracks");
-const { logControllerStart, logControllerFinish, logControllerError } = require("../utils/logger");
+const { logControllerStart, logControllerFinish, logControllerError, logInfo } = require("../utils/logger");
 
 // 단일 플레이리스트 조회
 const getPlaylist = onCall({ region: "asia-northeast3" }, async (request) => {
@@ -19,7 +19,7 @@ const getPlaylist = onCall({ region: "asia-northeast3" }, async (request) => {
     }
 
     const uid = auth.uid; 
-    const { playlistId } = request.data;
+    const playlistId = request.data.playlistId;
 
     if (!playlistId) {
       throw new https.HttpsError("invalid-argument", "플레이리스트 ID가 필요합니다.");
@@ -32,11 +32,11 @@ const getPlaylist = onCall({ region: "asia-northeast3" }, async (request) => {
     }
 
     // to be fix
-    const playlistData = await addTracksToPlaylist(playlist)
+    const playlistWithTracks = await addTracksToPlaylist(uid, playlist);
 
     logControllerFinish("getPlaylist");
 
-    return { success: true, data: playlistData };
+    return { success: true, data: playlistWithTracks };
   } catch (error) {
     logControllerError("getPlaylist", error);
     throw error;
@@ -55,7 +55,7 @@ const getPlaylists = onCall({ region: "asia-northeast3" }, async (request) => {
     }
 
     const uid = auth.uid;
-    const { playlistIds } = request.data;
+    const playlistIds = request.data.playlistIds;
 
     if (!playlistIds) {
       throw new https.HttpsError("invalid-argument", "유효한 플레이리스트 ID 배열이 필요합니다.");
@@ -64,12 +64,16 @@ const getPlaylists = onCall({ region: "asia-northeast3" }, async (request) => {
     // 플레이리스트 목록 조회
     const playlists = await playlistService.getPlaylists(uid, playlistIds);
 
+    
+
     // to be fix
-    const playlistsData = playlists.map(async (playlist) => addTracksToPlaylist(playlist));
+    const playlistsWithTracks = await Promise.all(
+      playlists.map(async (playlist) => addTracksToPlaylist(uid, playlist))
+    );
 
     logControllerFinish("getPlaylists");
 
-    return { success: true, data: playlistsData };
+    return { success: true, data: playlistsWithTracks };
   } catch (error) {
     logControllerError("getPlaylists", error);
     throw error;
@@ -87,24 +91,28 @@ const getPlatformsPlaylists = onCall({ region: "asia-northeast3" }, async (reque
     }
 
     const uid = auth.uid;
-    const platforms = request.data;
+    const platforms = request.data.platforms;
 
     const contentData = await userContentDataService.getContentData(uid);
     const playlistIds = new Set();
 
     platforms.forEach(platform => {
-      let platformsPlaylists = contentData.getPlatformsPlaylists(platform);
+      let platformsPlaylists = contentData.getPlaylistsByPlatform(platform);
       platformsPlaylists.forEach(playlistId => playlistIds.add(playlistId));
     });
 
     const playlists = await playlistService.getPlaylists(uid, Array.from(playlistIds));
 
+    logInfo("getPlatformsPlaylists", playlists.length);
+
     // to be fix
-    const playlistsData = playlists.map(async (playlist) => addTracksToPlaylist(playlist));
+    const playlistsWithTracks = await Promise.all(
+      playlists.map(async (playlist) => addTracksToPlaylist(uid, playlist))
+    );
 
     logControllerFinish("getPlatformsPlaylists");
-    return { success: true, data: playlistsData };
-  } catch {
+    return { success: true, data: playlistsWithTracks };
+  } catch (error){
     logControllerError("getPlatformsPlaylists", error);
     throw error;
   }

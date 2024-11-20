@@ -38,6 +38,7 @@ class SaveRef {
 class TrackRef extends SaveRef {}
 class PlaylistRef extends SaveRef {}
 class AlbumRef extends SaveRef {}
+class ArtistRef extends SaveRef {}
 
 // UserContentData.js
 class UserContentData {
@@ -47,6 +48,7 @@ class UserContentData {
     this._likedTracks = new Map();    // id -> TrackRef
     this._playlists = new Map();      // id -> PlaylistRef
     this._albums = new Map();         // id -> AlbumRef
+    this._artists = new Map();        // id -> ArtistRef
   }
 
   get uid() {
@@ -63,6 +65,10 @@ class UserContentData {
 
   get albums() {
     return Array.from(this._albums.keys());
+  }
+
+  get artists() {
+    return Array.from(this._artists.keys());
   }
 
   // Track 관련 메서드
@@ -143,6 +149,32 @@ class UserContentData {
     }
   }
 
+  // Artist 관련 메서드
+  saveArtist(id, platform) {
+    if (!id) throw new Error("Artist ID is required");
+    if (!platform) throw new Error("Platform is required");
+
+    let artistRef = this._artists.get(id);
+    if (!artistRef) {
+      artistRef = new ArtistRef(id);
+      this._artists.set(id, artistRef);
+    }
+    artistRef.addPlatform(platform);
+  }
+
+  unsaveArtist(id, platform) {
+    if (!id) throw new Error("Artist ID is required");
+    if (!platform) throw new Error("Platform is required");
+
+    const artistRef = this._artists.get(id);
+    if (artistRef) {
+      artistRef.removePlatform(platform);
+      if (artistRef.isEmpty) {
+        this._artists.delete(id);
+      }
+    }
+  }
+
   // 조회 메서드
   getLikedTracksByPlatform(platform) {
     if (!platform) throw new Error("Platform is required");
@@ -165,6 +197,13 @@ class UserContentData {
       .map(ref => ref.id);
   }
 
+  getArtistsByPlatform(platform) {
+    if (!platform) throw new Error("Platform is required");
+    return Array.from(this._artists.values())
+      .filter(ref => ref.hasPlatform(platform))
+      .map(ref => ref.id);
+  }
+
   // 상태 확인 메서드
   isLikedTrackSaved(id, platform) {
     const ref = this._likedTracks.get(id);
@@ -178,6 +217,11 @@ class UserContentData {
 
   isAlbumSaved(id, platform) {
     const ref = this._albums.get(id);
+    return ref ? ref.hasPlatform(platform) : false;
+  }
+
+  isArtistSaved(id, platform) {
+    const ref = this._artists.get(id);
     return ref ? ref.hasPlatform(platform) : false;
   }
 
@@ -196,6 +240,10 @@ class UserContentData {
       albums: Array.from(this._albums.values()).map(ref => ({
         id: ref.id,
         platforms: ref.platforms
+      })),
+      artists: Array.from(this._artists.values()).map(ref => ({    // 추가
+        id: ref.id,
+        platforms: ref.platforms
       }))
     };
   }
@@ -206,5 +254,6 @@ module.exports = {
   TrackRef,
   PlaylistRef,
   AlbumRef,
+  ArtistRef,
   UserContentData
 };

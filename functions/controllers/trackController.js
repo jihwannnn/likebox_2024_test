@@ -3,7 +3,7 @@ const { onCall } = require("firebase-functions/v2/https");
 const { https } = require("firebase-functions/v2");
 const trackService = require("../services/trackService");
 const userContentDataService = require("../services/userContentDataService");
-const { logControllerStart, logControllerFinish, logControllerError } = require("../utils/logger");
+const { logControllerStart, logControllerFinish, logControllerError, logInfo } = require("../utils/logger");
 
 // 트랙 목록 조회
 const getTracks = onCall({ region: "asia-northeast3" }, async (request) => {
@@ -17,7 +17,7 @@ const getTracks = onCall({ region: "asia-northeast3" }, async (request) => {
     }
 
     const uid = auth.uid;
-    const { trackIds } = request.data;
+    const trackIds = request.data.trackIds;
 
     if (!trackIds) {
       throw new https.HttpsError("invalid-argument", "유효한 ISRC 배열이 필요합니다.");
@@ -46,21 +46,24 @@ const getPlatformsTracks = onCall({ region: "asia-northeast3" }, async (request)
     }
 
     const uid = auth.uid;
-    const platforms = request.data;
+    const platforms = request.data.platforms;
 
-    const contentData = userContentDataService.getContentData(uid);
+    const contentData = await userContentDataService.getContentData(uid);
     const trackIds = new Set();
 
     platforms.forEach(platform => {
-      let platformTracks = contentData.getPlatformsTracks(platform);
+      let platformTracks = contentData.getLikedTracksByPlatform(platform);
       platformTracks.forEach(trackId => trackIds.add(trackId));
     });
 
-    const tracks = trackService.getTracks(uid, Array.from(trackIds));
+    const tracks = await trackService.getTracks(uid, Array.from(trackIds));
+
+    logInfo("getPlatformsTracks", tracks.length);
+
 
     logControllerFinish("getPlatformsTracks");
     return { success: true, data: tracks };
-  } catch {
+  } catch (error) {
     logControllerError("getPlatformsTracks", error);
     throw error;
   }

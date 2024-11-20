@@ -1,26 +1,22 @@
 const trackService = require("../services/trackService");
 
 // 클라이언트 repo 보조 함수
-async function addTracksToPlaylist(playlist){
+async function addTracksToPlaylist(uid, playlist){
 
-  let tracks = trackService.getTracks(uid, playlist.tracks);
-  let playlistData = playlist.toJSON()
-  let tracksData = tracks.map( track => track.toJSON())
-  playlistData["tracks"] = tracksData;
+  let tracks = await trackService.getTracks(uid, playlist.tracks);
+  playlist.tracks = tracks
 
-  return playlistData;
+  return playlist;
 
 }
 
 // 클라이언트 repo 보조 함수
-async function addTracksToAlbum(album){
+async function addTracksToAlbum(uid, album){
 
-  let tracks = trackService.getTracks(uid, album.tracks);
-  let albumData = album.toJSON()
-  let tracksData = tracks.map( track => track.toJSON())
-  albumData["tracks"] = tracksData;
+  let tracks = await trackService.getTracks(uid, album.tracks);
+  album.tracks = tracks
 
-  return albumData;
+  return album;
 
 }
 

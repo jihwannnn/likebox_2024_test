@@ -3,27 +3,28 @@ class PlatformInterface {
 
   // 인증 URL 가져오기
   getAuthUrl() {
-    throw new Error("Method getAuthUrl() must be implemented in the subclass.");
   }
 
   // 토큰 교환
   async exchangeCodeForToken(uid, authCode) {
-    throw new Error("Method exchangeCodeForToken() must be implemented in the subclass.");
   }
 
   // 토큰 갱신
   async refreshAccessToken(refreshToken) {
-    throw new Error("Method refreshAccessToken() must be implemented in the subclass.");
   }
 
   // 좋아요한 트랙 동기화
-  async getLikedTracks(uid, accessToken) {
+  async getLikedTracks(accessToken) {
     throw new Error("Method getLikedTracks() must be implemented in the subclass.");
   }
 
   // 플레이리스트 동기화
-  async getPlaylists(uid, accessToken) {
+  async getPlaylists(accessToken) {
     throw new Error("Method getPlaylists() must be implemented in the subclass.");
+  }
+
+  async getAlbums(ccessToken) {
+    throw new Error("Method getAlbums() must be implemented in the subclass.")
   }
 }
 

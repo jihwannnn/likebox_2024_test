@@ -5,14 +5,14 @@ const tokenService = require("../services/tokenService");
 const trackService = require("../services/trackService");
 const playlistService = require("../services/playlistService");
 const albumService = require("../services/albumService");
+const artistService = require("../services/artistService");
 const userContentDataService = require("../services/userContentDataService");
 const PlatformFactory = require("../platforms/PlatformFactory");
 const { logControllerStart, logControllerFinish, logControllerError } = require("../utils/logger");
 
 const synchContent = onCall({ region: "asia-northeast3" }, async (request) => {
   try {
-    const { contentType, platform } = request.data;
-    logControllerStart(`synchContent_${contentType}`);
+    logControllerStart("synchContent");
 
     // 인증 확인
     const auth = request.auth;
@@ -22,6 +22,9 @@ const synchContent = onCall({ region: "asia-northeast3" }, async (request) => {
 
     // 데이터 초기화
     const uid = auth.uid;
+    const contentType = request.data.contentType;
+    const platform = request.data.platform;
+
     let contentData = await userContentDataService.getContentData(uid);
 
     // 플랫폼에서 데이터 가져옴
@@ -98,6 +101,29 @@ const synchContent = onCall({ region: "asia-northeast3" }, async (request) => {
         await trackService.saveTracks(uid, allTracks);
         break;
       }
+
+      case "ARTIST": {
+        // 팔로우한 아티스트 목록 가져오기
+        const allArtists = await platformInstance.getFollowedArtists(tokens.accessToken);
+        const savedContent = contentData.getArtistsByPlatform(platform);
+        const artistIds = allArtists.map(artist => artist.id);
+       
+        // 언팔로우된 아티스트 처리 
+        savedContent.forEach(savedId => {
+          if (!artistIds.includes(savedId)) {
+            contentData.unsaveArtist(savedId, platform);
+          }
+        });
+       
+        // 새로 팔로우한 아티스트 처리
+        artistIds.forEach(id => {
+          contentData.saveArtist(id, platform);  
+        });
+       
+        // db에 저장
+        await artistService.saveArtists(uid, allArtists);
+        break;
+       }
       
       default:
         throw new Error(`Unknown content type: ${contentType}`);

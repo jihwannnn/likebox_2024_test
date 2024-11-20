@@ -2,11 +2,14 @@ const { onCall } = require("firebase-functions/v2/https");
 const { https } = require("firebase-functions/v2");
 const jwtDecode = require("jwt-decode"); 
 const tokenService = require("../services/tokenService");
+const Token = require("../models/Token");
 const PlatformFactory = require("../platforms/PlatformFactory");
+const AppleMusic = require("../platforms/AppleMusic");
 const { logControllerStart, logControllerFinish, logControllerError } = require("../utils/logger");
 
+
 // 토큰 생성 프로세스
-const generateToken = onCall({ region: "asia-northeast3" }, async (request) => {
+const generateToken = onCall({ region: "asia-northeast3", secrets: ["SPOTIFY_CLIENT_SECRET"]},  async (request) => {
   try {
     logControllerStart("generateToken");
 
@@ -17,7 +20,7 @@ const generateToken = onCall({ region: "asia-northeast3" }, async (request) => {
     }
 
     // 클라이언트가 제공한 authCode 가져옴
-    const authCode = request.data.code;
+    const authCode = request.data.authCode;
     if (!authCode) {
       throw new https.HttpsError("invalid-argument", "인증 코드가 제공되지 않았습니다.");
     }
@@ -90,6 +93,56 @@ const verifyToken = onCall({ region: "asia-northeast3" }, async (request) => {
   }
 });
 
+const saveAppleUserToken = onCall({ region: "asia-northeast3" }, async (request) => {
+  try{
+    logControllerStart("saveAppleUserToken");
+
+    // 인증된 요청인지 확인
+    const auth = request.auth;
+    if (!auth) {
+      throw new https.HttpsError("unauthenticated", "사용자가 인증되지 않았습니다.");
+    }
+
+    const uid = auth.uid;
+    const accessToken = request.data.userToken;
+    const token = new Token(uid, "APPLE_MUSIC", accessToken, "");
+    await tokenService.saveToken(token);
+
+    logControllerFinish("saveAppleUserToken");
+    return { success: true, message: "Usertoken is saved for apple music" };
+
+  } catch (error){
+    logControllerError("saveAppleUserToken", error);
+    throw error;
+  }
+});
+
+const generateAppleDevelopertToken = onCall({ region: "asia-northeast3" }, async (request) => {
+  try{
+    logControllerStart("generateAppleDevelopertToken");
+
+    // 인증된 요청인지 확인
+    const auth = request.auth;
+
+    if (!auth) {
+      throw new https.HttpsError("unauthenticated", "사용자가 인증되지 않았습니다.");
+    }
+
+    const uid = "jihwan"
+    const AM = new AppleMusic();
+    const accessToken = AM.generateDeveloperToken();
+    const token = new Token(uid, "APPLE_MUSIC", accessToken, "");
+    await tokenService.saveToken(token);
+
+    logControllerFinish("generateAppleDevelopertToken");
+    return { success: true, message: "DeveloperToken is saved for apple music" };
+
+  } catch (error){
+    logControllerError("generateAppleDevelopertToken", error);
+    throw error;
+  }
+});
+
 // 토큰 삭제 프로세스
 const removeToken = onCall({ region: "asia-northeast3" }, async (request) => {
   try {
@@ -147,5 +200,12 @@ function isTokenExpired(token) {
   }
 }
 
-module.exports = { generateToken, verifyToken, removeToken, removeAllTokens };
+module.exports = { 
+  generateToken, 
+  verifyToken, 
+  removeToken, 
+  removeAllTokens, 
+  saveAppleUserToken,
+  generateAppleDevelopertToken
+};
 

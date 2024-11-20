@@ -11,28 +11,16 @@ class Content {
       throw new Error("Platform is required");
     }
     
-    this._id = id;
-    this._pid = pid;
-    this._platform = platform;
-  }
-
-  get id() {
-    return this._id;
-  }
-
-  get pid() {
-    return this._pid;
-  }
-
-  get platform() {
-    return this._platform;
+    this.id = id;
+    this.pid = pid;
+    this.platform = platform;
   }
 
   toJSON() {
     return {
-      id: this._id,
-      pid: this._pid,
-      platform: this._platform
+      id: this.id,
+      pid: this.pid,
+      platform: this.platform
     };
   }
 }
@@ -40,7 +28,8 @@ class Content {
 // Playlist class
 class Playlist extends Content {
   constructor(pid, platform, name = "", description = "", coverImageUrl = "", tracks = [], owner = "", trackCount = 0) {
-    super(pid+platform, pid, platform);
+    const id = pid + platform;
+    super(id, pid, platform);
     this.name = name;
     this.description = description;
     this.coverImageUrl = coverImageUrl;
@@ -50,6 +39,18 @@ class Playlist extends Content {
   }
 
   toJSON() {
+    return {
+      ...super.toJSON(),
+      name: this.name,
+      description: this.description,
+      coverImageUrl: this.coverImageUrl,
+      tracks: this.tracks,
+      owner: this.owner,
+      trackCount: this.trackCount
+    };
+  }
+
+  toJSONWithTracks() {
     return {
       ...super.toJSON(),
       name: this.name,
@@ -103,9 +104,50 @@ class Album extends Content {
       name: this.name,
       coverImageUrl: this.coverImageUrl,
       artists: this.artists,
+      tracks: this.tracks,
+      releasedDate: this.releasedDate,
+      trackCount: this.trackCount
+    };
+  }
+
+  toJSONWithTracks() {
+    return {
+      ...super.toJSON(),
+      name: this.name,
+      coverImageUrl: this.coverImageUrl,
+      artists: this.artists,
       tracks: this.tracks.map(track => track.toJSON()),
       releasedDate: this.releasedDate,
       trackCount: this.trackCount
+    };
+  }
+}
+
+// Artist class
+class Artist extends Content {
+  constructor(pid, platform, name = "", thumbnailUrl = "", genres = [], followerCount = 0, externalUrl = "", popularity = 0)
+  {
+    const id = pid + platform;
+
+    super(id, pid, platform);
+
+    this.name = name;
+    this.thumbnailUrl = thumbnailUrl;
+    this.genres = genres;
+    this.followerCount = followerCount;
+    this.externalUrl = externalUrl;
+    this.popularity = popularity;
+  }
+
+  toJSON() {
+    return {
+      ...super.toJSON(),
+      name: this.name,
+      thumbnailUrl: this.thumbnailUrl,
+      genres: this.genres,
+      followerCount: this.followerCount,
+      externalUrl: this.externalUrl,
+      popularity: this.popularity
     };
   }
 }
@@ -114,5 +156,6 @@ module.exports = {
   Content,
   Playlist,
   Track,
-  Album
+  Album,
+  Artist
 };

@@ -1,17 +1,17 @@
-const { logger } = require("firebase-functions/v2");
+const { logger, params } = require("firebase-functions/v2");
 
 // logger: platform
 
-const logPlatformStart = (functionName) => {
-  logger.info(`Platform phase start: ${functionName}`);
+const logPlatformStart = (platform, functionName) => {
+  logger.info(`Platform phase start: ${platform}, ${functionName}`);
 };
 
-const logPlatformFinish = (functionName) => {
-  logger.info(`Platform phase finish: ${functionName}`);
+const logPlatformFinish = (platform, functionName) => {
+  logger.info(`Platform phase finish: ${platform}, ${functionName}`);
 };
 
-const logPlatformError = (functionName, error) => {
-  logger.error(`Error in Platform, ${functionName}: `, error);
+const logPlatformError = (platform, functionName, error) => {
+  logger.error(`Error in Platform, ${platform}, ${functionName}: `, error);
 };
 
 // logger: service
@@ -64,6 +64,11 @@ const logTestError = (functionName, error) => {
   logger.error('=================== TEST ERROR END ===================');
 };
 
+const logInfo = (functionName, params) => {
+  logger.info("Function: ", functionName);
+  logger.info("Parameter: ", params);
+}
+
 module.exports = {
   logPlatformStart,
   logPlatformFinish,
@@ -76,5 +81,6 @@ module.exports = {
   logControllerError,
   logTestStart,
   logTestFinish,
-  logTestError
+  logTestError,
+  logInfo
 };

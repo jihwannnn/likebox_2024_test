@@ -3,7 +3,7 @@ const { onCall } = require("firebase-functions/v2/https");
 const { https } = require("firebase-functions/v2");
 const albumService = require("../services/albumService");
 const userContentDataService = require("../services/userContentDataService");
-const { logControllerStart, logControllerFinish, logControllerError } = require("../utils/logger");
+const { logControllerStart, logControllerFinish, logControllerError, logInfo } = require("../utils/logger");
 
 const { addTracksToAlbum } = require("../utils/addTracks");
 
@@ -19,7 +19,7 @@ const getAlbum = onCall({ region: "asia-northeast3" }, async (request) => {
     }
 
     const uid = auth.uid;
-    const { albumId } = request.data;
+    const albumId = request.data.albumId;
 
     if (!albumId) {
       throw new https.HttpsError("invalid-argument", "앨범 UPC가 필요합니다.");
@@ -32,11 +32,11 @@ const getAlbum = onCall({ region: "asia-northeast3" }, async (request) => {
     }
 
     // to be fix
-    const albumData = await addTracksToAlbum(album)
+    const albumwithTracks = await addTracksToAlbum(uid, album)
 
     logControllerFinish("getAlbum");
 
-    return { success: true, data: albumData };
+    return { success: true, data: albumwithTracks };
   } catch (error) {
     logControllerError("getAlbum", error);
     throw error;
@@ -55,7 +55,7 @@ const getAlbums = onCall({ region: "asia-northeast3" }, async (request) => {
     }
 
     const uid = auth.uid;
-    const { albumIds } = request.data;
+    const albumIds = request.data.albumIds;
 
     if (!albumIds) {
       throw new https.HttpsError("invalid-argument", "유효한 UPC 배열이 필요합니다.");
@@ -64,12 +64,16 @@ const getAlbums = onCall({ region: "asia-northeast3" }, async (request) => {
     // 앨범 목록 조회
     const albums = await albumService.getAlbums(uid, albumIds);
 
+    logInfo("getPlatformsAlbums", albums.length);
+
     // to be fix
-    const albumsData = albums.map(async (album) => addTracksToAlbum(album));
+    const albumsWithTracks = await Promise.all(
+      albums.map(async (album) => addTracksToAlbum(uid, album))
+    );
 
     logControllerFinish("getAlbums");
 
-    return { success: true, data: albumsData };
+    return { success: true, data: albumsWithTracks };
   } catch (error) {
     logControllerError("getAlbums", error);
     throw error;
@@ -87,24 +91,26 @@ const getPlatformsAlbums = onCall({ region: "asia-northeast3" }, async (request)
     }
 
     const uid = auth.uid;
-    const platforms = request.data;
+    const platforms = request.data.platforms;
 
-    const contentData = userContentDataService.getContentData(uid);
+    const contentData = await userContentDataService.getContentData(uid);
     const albumIds = new Set();
 
     platforms.forEach(platform => {
-      let platformsAlbums = contentData.getPlatformsAlbums(platform);
+      let platformsAlbums = contentData.getAlbumsByPlatform(platform);
       platformsAlbums.forEach(albumId => albumIds.add(albumId));
     });
 
-    const albums = albumService.getAlbums(uid, Array.from(albumIds));
+    const albums = await albumService.getAlbums(uid, Array.from(albumIds));
 
     // to be fix
-    const albumsData = albums.map(async (album) => addTracksToAlbum(album));
+    const albumsWithTracks = await Promise.all(
+      await albums.map(async (album) => addTracksToAlbum(uid, album))
+    );
 
     logControllerFinish("getPlatformsAlbums");
-    return { success: true, data: albumsData };
-  } catch {
+    return { success: true, data: albumsWithTracks };
+  } catch (error) {
     logControllerError("getPlatformsAlbums", error);
     throw error;
   }

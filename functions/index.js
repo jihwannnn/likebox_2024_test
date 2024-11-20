@@ -3,6 +3,7 @@ const admin = require("firebase-admin");
 admin.initializeApp(); // Firebase Admin 초기화
 
 const albumController = require("./controllers/albumController");
+const artistController = require("./controllers/artistController");
 const contentController = require("./controllers/contentController");
 const generalController = require("./controllers/generalController");
 const infoController = require("./controllers/infoController");
@@ -34,6 +35,8 @@ exports.synchContent = synchController.synchContent;
 // Token
 exports.generateToken = tokenController.generateToken;
 exports.verifyToken = tokenController.verifyToken;
+exports.saveAppleUserToken = tokenController.saveAppleUserToken;
+exports.generateAppleDevelopertToken = tokenController.generateAppleDevelopertToken;
 exports.removeToken = tokenController.removeToken; 
 exports.removeAllTokens = tokenController.removeAllTokens
 
@@ -55,6 +58,13 @@ exports.getAlbum = albumController.getAlbum;
 exports.getAlbums = albumController.getAlbums;
 exports.getPlatformsAlbums = albumController.getPlatformsAlbums;
 
+// Artist
+exports.getArtist = artistController.getArtist;
+exports.getArtists = artistController.getArtists;
+exports.getPlatformsArtists = artistController.getPlatformsArtists
+
 
 // Test
 exports.testFunction1 = testController.testFunction1;
+exports.saveDummies = testController.saveDummies;
+exports.getDummies = testController.getDummies;
